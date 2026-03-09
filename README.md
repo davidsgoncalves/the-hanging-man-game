@@ -16,6 +16,16 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## Componentes de UI (shadcn/ui)
+
+Este projeto utiliza [shadcn/ui](https://ui.shadcn.com/) como biblioteca de componentes. Os componentes ficam em `components/ui/`.
+
+**Regra:** Todo botão deve usar `<Button>` de `@/components/ui/button` e todo input deve usar `<Input>` de `@/components/ui/input`. Evite criar `<button>` ou `<input>` nativos diretamente nas páginas — sempre utilize os componentes do shadcn para manter consistência visual e evitar repetição de código.
+
+## Plano de Implementação
+
+O plano de implementação detalhado para este projeto pode ser encontrado em [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md).
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.

@@ -1,41 +1,30 @@
 "use client";
 
 import { useAuth } from "@/components/AuthProvider";
+import { Button } from "@/components/ui/button";
 
 export const AuthButton = () => {
   const { user, loading, signIn, signOutUser } = useAuth();
 
   if (loading) {
     return (
-      <button
-        className="rounded-full border border-zinc-300 px-4 py-2 text-sm text-zinc-500"
-        type="button"
-        disabled
-      >
+      <Button variant="outline" disabled>
         Carregando...
-      </button>
+      </Button>
     );
   }
 
   if (user) {
     return (
-      <button
-        className="rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:border-zinc-400"
-        type="button"
-        onClick={() => signOutUser()}
-      >
+      <Button variant="outline" onClick={() => signOutUser()}>
         Sair ({user.displayName ?? user.email})
-      </button>
+      </Button>
     );
   }
 
   return (
-    <button
-      className="rounded-full bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
-      type="button"
-      onClick={() => signIn()}
-    >
+    <Button onClick={() => signIn()}>
       Entrar com Google
-    </button>
+    </Button>
   );
 };

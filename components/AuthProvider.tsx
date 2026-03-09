@@ -22,28 +22,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let unsubscribe: (() => void) | null = null;
-    let attempts = 0;
-    const start = () => {
-      const auth = getAuthClient();
-      if (!auth) {
-        attempts += 1;
-        if (attempts > 10) {
-          setLoading(false);
-          return;
-        }
-        setTimeout(start, 200);
-        return;
-      }
-      unsubscribe = auth.onAuthStateChanged((nextUser) => {
-        setUser(nextUser);
-        setLoading(false);
-      });
-    };
-    start();
-    return () => {
-      if (unsubscribe) unsubscribe();
-    };
+    const auth = getAuthClient();
+    const unsubscribe = auth.onAuthStateChanged((nextUser) => {
+      setUser(nextUser);
+      setLoading(false);
+    });
+    return () => unsubscribe();
   }, []);
 
   const value = useMemo<AuthContextValue>(
@@ -62,7 +46,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         await auth.signOut();
       },
     }),
-    [user],
+    [user, loading],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

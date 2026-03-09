@@ -1,62 +1,6 @@
-type FirebaseAuthClient = {
-  onAuthStateChanged: (
-    callback: (user: FirebaseUser | null) => void,
-  ) => () => void;
-  signInWithPopup: (provider: unknown) => Promise<void>;
-  signOut: () => Promise<void>;
-  currentUser: FirebaseUser | null;
-};
-
-type FirebaseAuthFactory = (() => FirebaseAuthClient) & {
-  GoogleAuthProvider: new () => unknown;
-};
-
-type FirebaseFirestoreFactory = (() => FirebaseFirestore) & {
-  FieldValue: {
-    serverTimestamp: () => unknown;
-  };
-};
-
-type FirebaseCompat = {
-  apps: unknown[];
-  initializeApp: (config: Record<string, string>) => unknown;
-  auth: FirebaseAuthFactory;
-  firestore: FirebaseFirestoreFactory;
-};
-
-export type FirebaseUser = {
-  uid: string;
-  displayName?: string | null;
-  email?: string | null;
-};
-
-export type FirebaseFirestore = {
-  collection: (path: string) => {
-    add: (data: Record<string, unknown>) => Promise<{ id: string }>;
-    doc: (id: string) => FirebaseDocRef;
-  };
-  runTransaction: <T>(
-    updateFunction: (transaction: FirebaseTransaction) => Promise<T>,
-  ) => Promise<T>;
-};
-
-export type FirebaseDocRef = {
-  onSnapshot: (
-    next: (snapshot: FirebaseSnapshot) => void,
-    error?: (err: unknown) => void,
-  ) => () => void;
-  update: (data: Record<string, unknown>) => Promise<void>;
-};
-
-export type FirebaseSnapshot = {
-  exists: boolean;
-  data: () => Record<string, unknown>;
-};
-
-export type FirebaseTransaction = {
-  get: (ref: FirebaseDocRef) => Promise<FirebaseSnapshot>;
-  update: (ref: FirebaseDocRef, data: Record<string, unknown>) => void;
-};
+import firebase from "firebase/compat/app";
+import "firebase/compat/auth";
+import "firebase/compat/firestore";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? "",
@@ -67,27 +11,16 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID ?? "",
 };
 
-const getFirebaseCompat = (): FirebaseCompat | null => {
-  if (typeof window === "undefined") return null;
-  const firebase = (window as unknown as { firebase?: FirebaseCompat }).firebase;
-  if (!firebase) return null;
-  if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
-  }
-  return firebase;
-};
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
 
-export const getAuthClient = () => getFirebaseCompat()?.auth() ?? null;
+export type FirebaseUser = firebase.User;
 
-export const getDbClient = () => getFirebaseCompat()?.firestore() ?? null;
+export const getAuthClient = () => firebase.auth();
 
-export const getGoogleProvider = () => {
-  const firebase = getFirebaseCompat();
-  if (!firebase) return null;
-  return new firebase.auth.GoogleAuthProvider();
-};
+export const getDbClient = () => firebase.firestore();
 
-export const getServerTimestamp = () => {
-  const firebase = getFirebaseCompat();
-  return firebase?.firestore.FieldValue.serverTimestamp() ?? null;
-};
+export const getGoogleProvider = () => new firebase.auth.GoogleAuthProvider();
+
+export const getServerTimestamp = () => firebase.firestore.FieldValue.serverTimestamp();

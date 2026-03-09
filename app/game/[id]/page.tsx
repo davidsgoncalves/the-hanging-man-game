@@ -5,10 +5,12 @@ import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { AuthButton } from "@/components/AuthButton";
 import { useAuth } from "@/components/AuthProvider";
+import { Button } from "@/components/ui/button";
 import {
   getDbClient,
   getServerTimestamp,
 } from "@/lib/firebase-client";
+import { saveFriendsMutually } from "@/lib/friends";
 import { buildMaskedWord, hasWon } from "@/lib/game-utils";
 import type { Game, GameStatus } from "@/lib/types";
 
@@ -32,7 +34,7 @@ export default function GamePage() {
     const ref = db.collection("games").doc(id);
     const unsubscribe = ref.onSnapshot(
       (snapshot) => {
-        if (!snapshot.exists()) {
+        if (!snapshot.exists) {
           setError("Partida não encontrada.");
           setGame(null);
           return;
@@ -62,14 +64,23 @@ export default function GamePage() {
     const ref = db.collection("games").doc(id);
     db.runTransaction(async (transaction) => {
       const snapshot = await transaction.get(ref);
-      if (!snapshot.exists()) return;
+      if (!snapshot.exists) return;
       const data = snapshot.data() as Game;
       if (data.player2Uid || data.createdBy === user.uid) return;
       transaction.update(ref, {
         player2Uid: user.uid,
+        player2Name: user.displayName ?? null,
+        participants: [...(data.participants ?? []), user.uid],
         updatedAt: getServerTimestamp(),
       });
     })
+      .then(() => {
+        if (!game || !user) return;
+        saveFriendsMutually(
+          { uid: game.createdBy, name: game.createdByName, email: null },
+          { uid: user.uid, name: user.displayName ?? null, email: user.email ?? null },
+        ).catch((err) => console.error("Erro ao salvar amigos:", err));
+      })
       .catch((err) => {
         console.error(err);
         setError("Não foi possível entrar na partida.");
@@ -109,7 +120,7 @@ export default function GamePage() {
     try {
       await db.runTransaction(async (transaction) => {
         const snapshot = await transaction.get(ref);
-        if (!snapshot.exists()) return;
+        if (!snapshot.exists) return;
         const data = snapshot.data() as Game;
         if (data.status !== "IN_PROGRESS") return;
         if (data.guessedLetters.includes(letter) || data.wrongLetters.includes(letter)) {
@@ -177,16 +188,16 @@ export default function GamePage() {
 
   if (!loading && !user) {
     return (
-      <div className="min-h-screen bg-zinc-50">
+      <div className="min-h-screen bg-background">
         <main className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-6 py-16">
-          <Link className="text-sm text-zinc-500 hover:text-zinc-700" href="/">
+          <Link className="text-sm text-muted-foreground hover:text-foreground" href="/">
             ← Voltar
           </Link>
-          <div className="rounded-3xl border border-zinc-200 bg-white p-8 shadow-sm">
-            <h1 className="text-2xl font-semibold text-zinc-900">
+          <div className="rounded-3xl border border-border bg-card p-8 shadow-sm">
+            <h1 className="text-2xl font-semibold text-foreground">
               Faça login para jogar
             </h1>
-            <p className="mt-2 text-sm text-zinc-500">
+            <p className="mt-2 text-sm text-muted-foreground">
               Você precisa entrar com Google para acessar esta partida.
             </p>
             <div className="mt-6">
@@ -199,33 +210,32 @@ export default function GamePage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-background">
       <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-16">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <Link className="text-sm text-zinc-500 hover:text-zinc-700" href="/">
+          <Link className="text-sm text-muted-foreground hover:text-foreground" href="/">
             ← Voltar
           </Link>
-          <AuthButton />
         </div>
 
         {error ? (
-          <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+          <div className="rounded-2xl border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
             {error}
           </div>
         ) : null}
 
         {!game ? (
-          <div className="rounded-3xl border border-zinc-200 bg-white p-8 shadow-sm">
-            <p className="text-sm text-zinc-500">Carregando partida...</p>
+          <div className="rounded-3xl border border-border bg-card p-8 shadow-sm">
+            <p className="text-sm text-muted-foreground">Carregando partida...</p>
           </div>
         ) : (
           <>
             {isThirdUser ? (
-              <div className="rounded-3xl border border-zinc-200 bg-white p-8 shadow-sm">
-                <h1 className="text-2xl font-semibold text-zinc-900">
+              <div className="rounded-3xl border border-border bg-card p-8 shadow-sm">
+                <h1 className="text-2xl font-semibold text-foreground">
                   Partida já em uso
                 </h1>
-                <p className="mt-2 text-sm text-zinc-500">
+                <p className="mt-2 text-sm text-muted-foreground">
                   Outro jogador já entrou nesta partida. Você pode apenas
                   acompanhar o progresso.
                 </p>
@@ -233,49 +243,61 @@ export default function GamePage() {
             ) : null}
 
             <section className="grid gap-6 lg:grid-cols-[2fr,1fr]">
-              <div className="rounded-3xl border border-zinc-200 bg-white p-8 shadow-sm">
+              <div className="rounded-3xl border border-border bg-card p-8 shadow-sm">
                 <div className="flex flex-col gap-2">
-                  <p className="text-sm text-zinc-500">
+                  <p className="text-sm text-muted-foreground">
+                    Criador:{" "}
+                    <span className="font-semibold text-foreground">
+                      {game.createdByName ?? "Jogador 1"}
+                    </span>
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Desafiante:{" "}
+                    <span className="font-semibold text-foreground">
+                      {game.player2Name ?? (game.player2Uid ? "Jogador 2" : "Aguardando...")}
+                    </span>
+                  </p>
+                  <p className="text-sm text-muted-foreground">
                     Status:{" "}
-                    <span className="font-semibold text-zinc-900">
+                    <span className="font-semibold text-foreground">
                       {game.status === "IN_PROGRESS"
                         ? "Em andamento"
                         : game.status === "WON"
-                          ? "Vitória do jogador 2"
-                          : "Derrota do jogador 2"}
+                          ? `Vitória de ${game.player2Name ?? "Jogador 2"}`
+                          : `Derrota de ${game.player2Name ?? "Jogador 2"}`}
                     </span>
                   </p>
-                  <h1 className="text-3xl font-semibold tracking-wide text-zinc-900">
+                  <h1 className="text-3xl font-semibold tracking-wide text-foreground">
                     {maskedWord}
                   </h1>
                 </div>
 
                 <div className="mt-6 grid gap-4">
                   <div>
-                    <p className="text-sm font-medium text-zinc-500">
+                    <p className="text-sm font-medium text-muted-foreground">
                       Letras erradas ({game.wrongLetters.length}/{game.maxWrong})
                     </p>
-                    <p className="mt-2 text-lg font-semibold text-rose-500">
+                    <p className="mt-2 text-lg font-semibold text-destructive">
                       {game.wrongLetters.join(", ") || "Nenhuma"}
                     </p>
                   </div>
 
                   <div>
-                    <p className="text-sm font-medium text-zinc-500">
+                    <p className="text-sm font-medium text-muted-foreground">
                       Letras corretas
                     </p>
-                    <p className="mt-2 text-lg font-semibold text-emerald-600">
+                    <p className="mt-2 text-lg font-semibold text-emerald-500">
                       {game.guessedLetters.join(", ") || "Nenhuma"}
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div className="rounded-3xl border border-zinc-200 bg-white p-8 shadow-sm">
-                <h2 className="text-lg font-semibold text-zinc-900">
+              <div className="rounded-3xl border border-border bg-card p-8 shadow-sm">
+                <h2 className="text-lg font-semibold text-foreground">
                   Palpites
                 </h2>
-                <p className="mt-2 text-sm text-zinc-500">
+                <p className="mt-2 text-sm text-muted-foreground">
                   {isCreator
                     ? "Você é o criador e só pode assistir."
                     : isPlayer2
@@ -289,10 +311,10 @@ export default function GamePage() {
                       game.guessedLetters.includes(letter) ||
                       game.wrongLetters.includes(letter);
                     return (
-                      <button
+                      <Button
                         key={letter}
-                        className="rounded-lg border border-zinc-200 px-2 py-2 text-sm font-semibold text-zinc-700 hover:border-zinc-400 disabled:cursor-not-allowed disabled:bg-zinc-100"
-                        type="button"
+                        variant="outline"
+                        size="sm"
                         disabled={
                           !isPlayer2 ||
                           game.status !== "IN_PROGRESS" ||
@@ -301,32 +323,31 @@ export default function GamePage() {
                         onClick={() => handleGuess(letter)}
                       >
                         {letter}
-                      </button>
+                      </Button>
                     );
                   })}
                 </div>
               </div>
             </section>
 
-            <section className="rounded-3xl border border-zinc-200 bg-white p-8 shadow-sm">
-              <h2 className="text-lg font-semibold text-zinc-900">Resultado</h2>
-              <p className="mt-2 text-sm text-zinc-500">
+            <section className="rounded-3xl border border-border bg-card p-8 shadow-sm">
+              <h2 className="text-lg font-semibold text-foreground">Resultado</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
                 {game.status === "IN_PROGRESS"
                   ? "Finalize a partida para salvar o resultado."
                   : game.status === "WON"
-                    ? "Parabéns! Jogador 2 venceu."
-                    : "O jogador 2 perdeu a rodada."}
+                    ? `Parabéns! ${game.player2Name ?? "Jogador 2"} venceu.`
+                    : `${game.player2Name ?? "Jogador 2"} perdeu a rodada.`}
               </p>
 
               {game.status !== "IN_PROGRESS" ? (
-                <button
-                  className="mt-6 rounded-full bg-zinc-900 px-5 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-70"
-                  type="button"
+                <Button
+                  className="mt-6"
                   onClick={handleSave}
                   disabled={saving}
                 >
                   {saving ? "Salvando..." : "Salvar resultado"}
-                </button>
+                </Button>
               ) : null}
             </section>
           </>

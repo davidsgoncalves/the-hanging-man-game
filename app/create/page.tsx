@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useState } from "react";
 import { AuthButton } from "@/components/AuthButton";
 import { useAuth } from "@/components/AuthProvider";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { getDbClient, getServerTimestamp } from "@/lib/firebase-client";
 import { normalizeWord } from "@/lib/game-utils";
 
@@ -37,7 +39,10 @@ export default function CreatePage() {
       }
       const docRef = await db.collection("games").add({
         createdBy: user.uid,
+        createdByName: user.displayName ?? null,
         player2Uid: null,
+        player2Name: null,
+        participants: [user.uid],
         word: normalized,
         guessedLetters: [],
         wrongLetters: [],
@@ -60,16 +65,16 @@ export default function CreatePage() {
 
   if (!loading && !user) {
     return (
-      <div className="min-h-screen bg-zinc-50">
+      <div className="min-h-screen bg-background">
         <main className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-6 py-16">
-          <Link className="text-sm text-zinc-500 hover:text-zinc-700" href="/">
+          <Link className="text-sm text-muted-foreground hover:text-foreground" href="/">
             ← Voltar
           </Link>
-          <div className="rounded-3xl border border-zinc-200 bg-white p-8 shadow-sm">
-            <h1 className="text-2xl font-semibold text-zinc-900">
+          <div className="rounded-3xl border border-border bg-card p-8 shadow-sm">
+            <h1 className="text-2xl font-semibold text-foreground">
               Faça login para continuar
             </h1>
-            <p className="mt-2 text-sm text-zinc-500">
+            <p className="mt-2 text-sm text-muted-foreground">
               Você precisa estar autenticado para criar uma partida.
             </p>
             <div className="mt-6">
@@ -82,50 +87,42 @@ export default function CreatePage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-background">
       <main className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-6 py-16">
-        <Link className="text-sm text-zinc-500 hover:text-zinc-700" href="/">
+        <Link className="text-sm text-muted-foreground hover:text-foreground" href="/">
           ← Voltar
         </Link>
-        <div className="rounded-3xl border border-zinc-200 bg-white p-8 shadow-sm">
-          <h1 className="text-2xl font-semibold text-zinc-900">
+        <div className="rounded-3xl border border-border bg-card p-8 shadow-sm">
+          <h1 className="text-2xl font-semibold text-foreground">
             Criar partida
           </h1>
-          <p className="mt-2 text-sm text-zinc-500">
+          <p className="mt-2 text-sm text-muted-foreground">
             Digite a palavra secreta. Ela será salva no Firestore.
           </p>
 
           <form className="mt-6 flex flex-col gap-4" onSubmit={handleCreate}>
-            <input
-              className="rounded-2xl border border-zinc-200 px-4 py-3 text-lg outline-none focus:border-zinc-400"
+            <Input
               placeholder="PALAVRA (A-Z)"
               value={word}
               onChange={(event) => setWord(event.target.value)}
             />
-            {error ? <p className="text-sm text-rose-500">{error}</p> : null}
-            <button
-              className="rounded-full bg-zinc-900 px-5 py-3 text-sm font-medium text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-70"
-              type="submit"
-              disabled={creating}
-            >
+            {error ? <p className="text-sm text-destructive">{error}</p> : null}
+            <Button type="submit" disabled={creating}>
               {creating ? "Criando..." : "Criar partida"}
-            </button>
+            </Button>
           </form>
 
           {gameId ? (
-            <div className="mt-6 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-              <p className="text-sm font-medium text-zinc-700">
+            <div className="mt-6 rounded-2xl border border-border bg-muted p-4">
+              <p className="text-sm font-medium text-foreground">
                 Link da partida
               </p>
-              <p className="mt-2 break-all text-sm text-zinc-600">
+              <p className="mt-2 break-all text-sm text-muted-foreground">
                 {`${typeof window !== "undefined" ? window.location.origin : ""}/game/${gameId}`}
               </p>
-              <Link
-                className="mt-4 inline-flex rounded-full bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
-                href={`/game/${gameId}`}
-              >
-                Abrir partida
-              </Link>
+              <Button asChild className="mt-4">
+                <Link href={`/game/${gameId}`}>Abrir partida</Link>
+              </Button>
             </div>
           ) : null}
         </div>
